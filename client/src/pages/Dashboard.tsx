@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
+import { useLoading } from '@/contexts/LoadingContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +11,8 @@ export default function Dashboard() {
   const [selectedTheme, setSelectedTheme] = useState('Green Energy');
   const [selectedIndustry, setSelectedIndustry] = useState('Solar');
   const [selectedMonths, setSelectedMonths] = useState('36');
+  
+  const { startLoading, updateStep, completeLoading } = useLoading();
 
   // 대시보드 요약 데이터
   const { data: summaryData, isLoading: summaryLoading } = trpc.trends.getDashboardSummary.useQuery();
@@ -28,6 +31,43 @@ export default function Dashboard() {
   const { data: trendsData, isLoading: trendsLoading } = trpc.trends.getLatestTrends.useQuery({
     months: parseInt(selectedMonths),
   });
+
+  // 로딩 상태 관리
+  useEffect(() => {
+    const isAnyLoading = summaryLoading || analysisLoading || trendsLoading;
+    
+    if (isAnyLoading) {
+      startLoading([
+        { id: 'summary', label: '대시보드 요약 데이터 로드', status: 'pending', progress: 0 },
+        { id: 'analysis', label: '시계열 분석 수행', status: 'pending', progress: 0 },
+        { id: 'trends', label: '트렌드 데이터 분석', status: 'pending', progress: 0 },
+      ]);
+
+      // 각 데이터 로딩 상태 업데이트
+      if (summaryLoading) {
+        updateStep('summary', { status: 'in-progress', progress: 30 });
+      } else {
+        updateStep('summary', { status: 'completed', progress: 100 });
+      }
+
+      if (analysisLoading) {
+        updateStep('analysis', { status: 'in-progress', progress: 50 });
+      } else {
+        updateStep('analysis', { status: 'completed', progress: 100 });
+      }
+
+      if (trendsLoading) {
+        updateStep('trends', { status: 'in-progress', progress: 70 });
+      } else {
+        updateStep('trends', { status: 'completed', progress: 100 });
+      }
+
+      // 모든 로딩이 완료되면
+      if (!isAnyLoading) {
+        completeLoading();
+      }
+    }
+  }, [summaryLoading, analysisLoading, trendsLoading, startLoading, updateStep, completeLoading]);
 
   const isLoading = summaryLoading || analysisLoading || trendsLoading;
 
@@ -312,29 +352,20 @@ export default function Dashboard() {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
                       labelStyle={{ color: '#e2e8f0' }}
+                      formatter={(value: any) => value?.toFixed(3)}
                     />
-                    <Bar dataKey="coefficient" fill="#8b5cf6" name="계절 계수" />
+                    <Bar dataKey="coefficient" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-64 flex items-center justify-center text-slate-400">
-                  계절성 데이터 없음
+                  계절성 데이터 로딩 중...
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* 로딩 상태 */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-slate-800 p-6 rounded-lg">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
-            <p className="text-slate-300 mt-4">분석 중...</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
