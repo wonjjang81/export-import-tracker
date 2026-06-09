@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState, useMemo, useRef } from 'react';
 
 export function LoadingProgressBar() {
-  const { isLoading, progress, currentStep, steps, logs } = useLoading();
+  const { isLoading, progress, currentStep, steps, logs, cancelLoading } = useLoading();
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(() => Date.now());
@@ -66,11 +66,19 @@ export function LoadingProgressBar() {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="bg-slate-900 rounded-2xl p-8 max-w-2xl w-full mx-4 border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* 헤더 */}
-        <div className="mb-6">
-          <h3 className="text-xl font-bold text-white mb-2">데이터 분석 중</h3>
-          <p className="text-slate-400 text-sm">
-            {currentStep?.label || '준비 중...'}
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">데이터 분석 중</h3>
+            <p className="text-slate-400 text-sm">
+              {currentStep?.label || '준비 중...'}
+            </p>
+          </div>
+          <button
+            onClick={cancelLoading}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200 text-sm flex-shrink-0 ml-4"
+          >
+            중지
+          </button>
         </div>
 
         {/* 메인 프로그레스 바 */}
