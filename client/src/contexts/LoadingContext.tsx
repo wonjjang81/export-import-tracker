@@ -16,6 +16,8 @@ export interface LogMessage {
 
 interface LoadingContextType {
   isLoading: boolean;
+  isCancelled: boolean;
+  isSuspended: boolean;
   progress: number; // 0-100
   currentStep: LoadingStep | null;
   steps: LoadingStep[];
@@ -41,21 +43,45 @@ interface LoadingContextType {
   
   // 로딩 취소
   cancelLoading: () => void;
+  
+  // 로딩 일시 중지 (이어서 진행 가능)
+  suspendLoading: () => void;
+  
+  // 처음부터 재시작
+  restartFromBeginning: (initialSteps: LoadingStep[]) => void;
+  
+  // 이어서 재시작
+  resumeLoading: () => void;
 }
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 
 export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
   const [progress, setProgressState] = useState(0);
   const [steps, setSteps] = useState<LoadingStep[]>([]);
   const [logs, setLogs] = useState<LogMessage[]>([]);
+  const [suspendedSteps, setSuspendedSteps] = useState<LoadingStep[]>([]);
+
+  const addLog = useCallback((message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    const logMessage: LogMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      level,
+      message,
+    };
+    setLogs(prevLogs => [...prevLogs, logMessage]);
+  }, []);
 
   const startLoading = useCallback((initialSteps: LoadingStep[]) => {
     setIsLoading(true);
     setProgressState(0);
     setSteps(initialSteps.map(step => ({ ...step, status: 'pending' as const, progress: 0 })));
     setLogs([]);
+    setIsCancelled(false);
+    setIsSuspended(false);
   }, []);
 
   const updateStep = useCallback((stepId: string, updates: Partial<LoadingStep>) => {
@@ -86,31 +112,52 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     }, 500);
   }, []);
 
-  const addLog = useCallback((message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') => {
-    const logMessage: LogMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: new Date(),
-      level,
-      message,
-    };
-    setLogs(prevLogs => [...prevLogs, logMessage]);
-  }, []);
-
   const clearLogs = useCallback(() => {
     setLogs([]);
   }, []);
 
   const cancelLoading = useCallback(() => {
     setIsLoading(false);
+    setIsCancelled(true);
+    setIsSuspended(true);
+    setSuspendedSteps(steps);
+    addLog('분석이 중지되었습니다.', 'warning');
+  }, [steps, addLog]);
+
+  const suspendLoading = useCallback(() => {
+    setIsLoading(false);
+    setIsSuspended(true);
+    setSuspendedSteps(steps);
+    addLog('분석이 일시 중지되었습니다.', 'info');
+  }, [steps, addLog]);
+
+  const restartFromBeginning = useCallback((initialSteps: LoadingStep[]) => {
+    setIsLoading(true);
+    setIsCancelled(false);
+    setIsSuspended(false);
     setProgressState(0);
-    setSteps([]);
+    setSteps(initialSteps.map(step => ({ ...step, status: 'pending' as const, progress: 0 })));
     setLogs([]);
-  }, []);
+    setSuspendedSteps([]);
+    addLog('분석을 처음부터 다시 시작합니다.', 'info');
+  }, [addLog]);
+
+  const resumeLoading = useCallback(() => {
+    if (suspendedSteps.length > 0) {
+      setIsLoading(true);
+      setIsSuspended(false);
+      setSteps(suspendedSteps);
+      addLog('분석을 이어서 진행합니다.', 'info');
+      // 로그는 유지
+    }
+  }, [suspendedSteps, addLog]);
 
   const currentStep = steps.find(s => s.status === 'in-progress') || steps[0];
 
   const value: LoadingContextType = {
     isLoading,
+    isCancelled,
+    isSuspended,
     progress,
     currentStep: currentStep || null,
     steps,
@@ -122,6 +169,9 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     clearLogs,
     completeLoading,
     cancelLoading,
+    suspendLoading,
+    restartFromBeginning,
+    resumeLoading,
   };
 
   return (

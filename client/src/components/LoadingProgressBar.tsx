@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState, useMemo, useRef } from 'react';
 
 export function LoadingProgressBar() {
-  const { isLoading, progress, currentStep, steps, logs, cancelLoading } = useLoading();
+  const { isLoading, isSuspended, progress, currentStep, steps, logs, cancelLoading, restartFromBeginning, resumeLoading } = useLoading();
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(() => Date.now());
@@ -59,6 +59,83 @@ export function LoadingProgressBar() {
     }
     return `${secs}초`;
   };
+
+  // 중지된 상태 UI
+  if (isSuspended && !isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="bg-slate-900 rounded-2xl p-8 max-w-2xl w-full mx-4 border border-slate-700 shadow-2xl">
+          {/* 헤더 */}
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-white mb-2">분석 중지됨</h3>
+            <p className="text-slate-400 text-sm">
+              분석이 중지되었습니다. 처음부터 시작하거나 이어서 진행할 수 있습니다.
+            </p>
+          </div>
+
+          {/* 진행 상황 요약 */}
+          <div className="bg-slate-800 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-slate-400">진행률</span>
+              <span className="text-2xl font-bold text-blue-400">{displayProgress}%</span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+                style={{ width: `${displayProgress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* 작업 로그 (선택사항) */}
+          {logs.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-slate-300 mb-2">작업 로그</h4>
+              <div className="bg-slate-950 rounded-lg p-3 max-h-40 overflow-y-auto border border-slate-700 space-y-1.5 font-mono text-xs">
+                {logs.slice(-5).map((log) => (
+                  <div key={log.id} className="flex items-start gap-2">
+                    <div className="flex-shrink-0 w-4 text-center">
+                      {log.level === 'success' && <span className="text-green-400">✓</span>}
+                      {log.level === 'error' && <span className="text-red-400">✕</span>}
+                      {log.level === 'warning' && <span className="text-yellow-400">⚠</span>}
+                      {log.level === 'info' && <span className="text-blue-400">ℹ</span>}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <span className={`${
+                        log.level === 'success' ? 'text-green-400' :
+                        log.level === 'error' ? 'text-red-400' :
+                        log.level === 'warning' ? 'text-yellow-400' :
+                        'text-slate-300'
+                      }`}>
+                        {log.message}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 버튼 그룹 */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => resumeLoading()}
+              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
+            >
+              이어서 진행
+            </button>
+            <button
+              onClick={() => restartFromBeginning(steps.map(s => ({ ...s, status: 'pending' as const, progress: 0 })))}
+              className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors duration-200"
+            >
+              처음부터 시작
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoading) return null;
 
