@@ -1,10 +1,12 @@
 import { useLoading } from '@/contexts/LoadingContext';
 import { CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export function LoadingProgressBar() {
   const { isLoading, progress, currentStep, steps } = useLoading();
   const [displayProgress, setDisplayProgress] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTime] = useState(() => Date.now());
 
   // 부드러운 진행률 애니메이션
   useEffect(() => {
@@ -13,6 +15,43 @@ export function LoadingProgressBar() {
     }, 50);
     return () => clearTimeout(timer);
   }, [progress]);
+
+  // 경과 시간 업데이트
+  useEffect(() => {
+    if (!isLoading) {
+      setElapsedTime(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      setElapsedTime(elapsed);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isLoading, startTime]);
+
+  // 예상 완료 시간 계산
+  const estimatedTimeRemaining = useMemo(() => {
+    if (displayProgress === 0) return 0;
+    if (displayProgress === 100) return 0;
+    
+    // 현재 진행률 기반으로 예상 총 시간 계산
+    const estimatedTotalTime = (elapsedTime / displayProgress) * 100;
+    const remaining = Math.max(0, Math.ceil(estimatedTotalTime - elapsedTime));
+    return remaining;
+  }, [displayProgress, elapsedTime]);
+
+  // 시간 포맷팅 함수
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) {
+      return `${mins}분 ${secs}초`;
+    }
+    return `${secs}초`;
+  };
 
   if (!isLoading) return null;
 
@@ -93,13 +132,25 @@ export function LoadingProgressBar() {
           ))}
         </div>
 
-        {/* 예상 시간 */}
-        <div className="bg-slate-800 rounded-lg p-3 text-center">
-          <p className="text-xs text-slate-400">
-            예상 완료 시간: <span className="text-slate-300 font-medium">
-              {Math.max(1, Math.round((100 - displayProgress) / 2))}초
-            </span>
-          </p>
+        {/* 시간 정보 */}
+        <div className="bg-slate-800 rounded-lg p-4 space-y-3">
+          {/* 경과 시간 */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">경과 시간</span>
+            <span className="text-sm font-bold text-blue-400">{formatTime(elapsedTime)}</span>
+          </div>
+
+          {/* 예상 남은 시간 */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">예상 남은 시간</span>
+            <span className="text-sm font-bold text-green-400">{formatTime(estimatedTimeRemaining)}</span>
+          </div>
+
+          {/* 예상 총 시간 */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+            <span className="text-xs text-slate-400">예상 총 시간</span>
+            <span className="text-sm font-bold text-purple-400">{formatTime(elapsedTime + estimatedTimeRemaining)}</span>
+          </div>
         </div>
       </div>
     </div>
