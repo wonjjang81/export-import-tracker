@@ -7,11 +7,19 @@ export interface LoadingStep {
   progress: number; // 0-100
 }
 
+export interface LogMessage {
+  id: string;
+  timestamp: Date;
+  level: 'info' | 'success' | 'warning' | 'error';
+  message: string;
+}
+
 interface LoadingContextType {
   isLoading: boolean;
   progress: number; // 0-100
   currentStep: LoadingStep | null;
   steps: LoadingStep[];
+  logs: LogMessage[];
   
   // 로딩 시작
   startLoading: (initialSteps: LoadingStep[]) => void;
@@ -21,6 +29,12 @@ interface LoadingContextType {
   
   // 전체 진행률 업데이트
   setProgress: (progress: number) => void;
+  
+  // 로그 메시지 추가
+  addLog: (message: string, level?: 'info' | 'success' | 'warning' | 'error') => void;
+  
+  // 로그 초기화
+  clearLogs: () => void;
   
   // 로딩 완료
   completeLoading: () => void;
@@ -35,11 +49,13 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgressState] = useState(0);
   const [steps, setSteps] = useState<LoadingStep[]>([]);
+  const [logs, setLogs] = useState<LogMessage[]>([]);
 
   const startLoading = useCallback((initialSteps: LoadingStep[]) => {
     setIsLoading(true);
     setProgressState(0);
     setSteps(initialSteps.map(step => ({ ...step, status: 'pending' as const, progress: 0 })));
+    setLogs([]);
   }, []);
 
   const updateStep = useCallback((stepId: string, updates: Partial<LoadingStep>) => {
@@ -70,10 +86,25 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     }, 500);
   }, []);
 
+  const addLog = useCallback((message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    const logMessage: LogMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      level,
+      message,
+    };
+    setLogs(prevLogs => [...prevLogs, logMessage]);
+  }, []);
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
+
   const cancelLoading = useCallback(() => {
     setIsLoading(false);
     setProgressState(0);
     setSteps([]);
+    setLogs([]);
   }, []);
 
   const currentStep = steps.find(s => s.status === 'in-progress') || steps[0];
@@ -83,9 +114,12 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
     progress,
     currentStep: currentStep || null,
     steps,
+    logs,
     startLoading,
     updateStep,
     setProgress,
+    addLog,
+    clearLogs,
     completeLoading,
     cancelLoading,
   };

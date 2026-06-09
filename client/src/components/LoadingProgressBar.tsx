@@ -1,12 +1,13 @@
 import { useLoading } from '@/contexts/LoadingContext';
 import { CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 
 export function LoadingProgressBar() {
-  const { isLoading, progress, currentStep, steps } = useLoading();
+  const { isLoading, progress, currentStep, steps, logs } = useLoading();
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(() => Date.now());
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   // 부드러운 진행률 애니메이션
   useEffect(() => {
@@ -32,12 +33,18 @@ export function LoadingProgressBar() {
     return () => clearInterval(interval);
   }, [isLoading, startTime]);
 
+  // 로그 자동 스크롤
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
   // 예상 완료 시간 계산
   const estimatedTimeRemaining = useMemo(() => {
     if (displayProgress === 0) return 0;
     if (displayProgress === 100) return 0;
     
-    // 현재 진행률 기반으로 예상 총 시간 계산
     const estimatedTotalTime = (elapsedTime / displayProgress) * 100;
     const remaining = Math.max(0, Math.ceil(estimatedTotalTime - elapsedTime));
     return remaining;
@@ -57,7 +64,7 @@ export function LoadingProgressBar() {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-slate-900 rounded-2xl p-8 max-w-md w-full mx-4 border border-slate-700 shadow-2xl">
+      <div className="bg-slate-900 rounded-2xl p-8 max-w-2xl w-full mx-4 border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* 헤더 */}
         <div className="mb-6">
           <h3 className="text-xl font-bold text-white mb-2">데이터 분석 중</h3>
@@ -68,16 +75,13 @@ export function LoadingProgressBar() {
 
         {/* 메인 프로그레스 바 */}
         <div className="mb-8">
-          {/* 백그라운드 바 */}
           <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden mb-3">
-            {/* 진행 바 */}
             <div
               className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${displayProgress}%` }}
             />
           </div>
 
-          {/* 퍼센트 표시 */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-400">진행률</span>
             <span className="text-2xl font-bold text-white">{displayProgress}%</span>
@@ -85,10 +89,9 @@ export function LoadingProgressBar() {
         </div>
 
         {/* 단계별 진행 상황 */}
-        <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
-          {steps.map((step, index) => (
+        <div className="space-y-3 mb-6 max-h-40 overflow-y-auto">
+          {steps.map((step) => (
             <div key={step.id} className="flex items-start gap-3">
-              {/* 아이콘 */}
               <div className="flex-shrink-0 mt-1">
                 {step.status === 'completed' ? (
                   <CheckCircle2 className="w-5 h-5 text-green-400" />
@@ -101,7 +104,6 @@ export function LoadingProgressBar() {
                 )}
               </div>
 
-              {/* 텍스트 및 진행률 */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-sm font-medium ${
@@ -115,7 +117,6 @@ export function LoadingProgressBar() {
                   <span className="text-xs text-slate-500">{step.progress}%</span>
                 </div>
 
-                {/* 단계별 미니 프로그레스 바 */}
                 <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
@@ -132,21 +133,56 @@ export function LoadingProgressBar() {
           ))}
         </div>
 
+        {/* 작업 로그 */}
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-slate-300 mb-2">작업 로그</h4>
+          <div className="bg-slate-950 rounded-lg p-3 h-48 overflow-y-auto border border-slate-700 space-y-1.5 font-mono text-xs">
+            {logs.length === 0 ? (
+              <p className="text-slate-500 text-center py-8">작업 로그가 없습니다</p>
+            ) : (
+              <>
+                {logs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-2">
+                    <div className="flex-shrink-0 w-4 text-center">
+                      {log.level === 'success' && <span className="text-green-400">✓</span>}
+                      {log.level === 'error' && <span className="text-red-400">✕</span>}
+                      {log.level === 'warning' && <span className="text-yellow-400">⚠</span>}
+                      {log.level === 'info' && <span className="text-blue-400">ℹ</span>}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <span className={`${
+                        log.level === 'success' ? 'text-green-400' :
+                        log.level === 'error' ? 'text-red-400' :
+                        log.level === 'warning' ? 'text-yellow-400' :
+                        'text-slate-300'
+                      }`}>
+                        {log.message}
+                      </span>
+                      <span className="text-slate-600 ml-2">
+                        [{log.timestamp.toLocaleTimeString('ko-KR', { hour12: false })}]
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <div ref={logsEndRef} />
+              </>
+            )}
+          </div>
+        </div>
+
         {/* 시간 정보 */}
         <div className="bg-slate-800 rounded-lg p-4 space-y-3">
-          {/* 경과 시간 */}
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400">경과 시간</span>
             <span className="text-sm font-bold text-blue-400">{formatTime(elapsedTime)}</span>
           </div>
 
-          {/* 예상 남은 시간 */}
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-400">예상 남은 시간</span>
             <span className="text-sm font-bold text-green-400">{formatTime(estimatedTimeRemaining)}</span>
           </div>
 
-          {/* 예상 총 시간 */}
           <div className="flex items-center justify-between pt-2 border-t border-slate-700">
             <span className="text-xs text-slate-400">예상 총 시간</span>
             <span className="text-sm font-bold text-purple-400">{formatTime(elapsedTime + estimatedTimeRemaining)}</span>
