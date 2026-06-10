@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
+import { InsightSummaryWidget, type InsightData } from '@/components/InsightSummaryWidget';
 
 export default function Dashboard() {
   const [selectedTheme, setSelectedTheme] = useState('Green Energy');
@@ -71,6 +72,34 @@ export default function Dashboard() {
 
   const isLoading = summaryLoading || analysisLoading || trendsLoading;
 
+  // 핵심 인사이트 데이터 생성
+  const insightData: InsightData | undefined = summaryData?.data ? {
+    lastUpdate: new Date(),
+    topTheme: selectedTheme,
+    topIndustry: selectedIndustry,
+    exportTrend: (summaryData.data.exportGrowth ?? 0) > 2 ? 'up' : (summaryData.data.exportGrowth ?? 0) < -2 ? 'down' : 'stable',
+    exportChange: summaryData.data.exportGrowth ?? 0,
+    importTrend: (summaryData.data.importGrowth ?? 0) > 2 ? 'up' : (summaryData.data.importGrowth ?? 0) < -2 ? 'down' : 'stable',
+    importChange: summaryData.data.importGrowth ?? 0,
+    tradeBalance: (summaryData.data.tradingBalance ?? 0) / 1e6,
+    alerts: [
+      ...(Math.abs(summaryData.data.exportGrowth ?? 0) > 10 ? [{
+        type: 'warning' as const,
+        message: `수출이 ${Math.abs(summaryData.data.exportGrowth ?? 0).toFixed(1)}% 급변했습니다.`
+      }] : []),
+      ...(Math.abs(summaryData.data.importGrowth ?? 0) > 10 ? [{
+        type: 'warning' as const,
+        message: `수입이 ${Math.abs(summaryData.data.importGrowth ?? 0).toFixed(1)}% 급변했습니다.`
+      }] : []),
+    ],
+    keyInsights: [
+      `${selectedTheme} 부문 수출이 ${(summaryData.data.exportGrowth ?? 0) > 0 ? '증가' : '감소'}하고 있습니다.`,
+      `${selectedIndustry} 산업의 무역수지가 ${(summaryData.data.tradingBalance ?? 0) > 0 ? '흑자' : '적자'}입니다.`,
+      `최근 3개월 평균 성장률은 ${(((summaryData.data.exportGrowth ?? 0) + (summaryData.data.importGrowth ?? 0)) / 2).toFixed(1)}%입니다.`,
+    ],
+    nextExpectedUpdate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  } : undefined;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       {/* 헤더 */}
@@ -82,6 +111,16 @@ export default function Dashboard() {
           {summaryData?.data?.latestMonth ? `최신 데이터: ${summaryData.data.latestMonth}` : '데이터 로딩 중...'}
         </p>
       </div>
+
+      {/* 핵심 인사이트 요약 위젯 */}
+      {insightData && (
+        <div className="mb-8">
+          <InsightSummaryWidget
+            data={insightData}
+            isLoading={summaryLoading}
+          />
+        </div>
+      )}
 
       {/* 핵심 지표 카드 */}
       {summaryData?.data && (
@@ -318,33 +357,37 @@ export default function Dashboard() {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
                       labelStyle={{ color: '#e2e8f0' }}
-                      formatter={(value: any) => value?.toFixed(2)}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} name="예측값" />
+                    <Line type="monotone" dataKey="forecast" stroke="#10b981" strokeWidth={2} name="예측값" />
+                    <Line type="monotone" dataKey="upper95" stroke="#94a3b8" strokeWidth={1} strokeDasharray="5 5" name="상한선(95%)" />
+                    <Line type="monotone" dataKey="lower95" stroke="#94a3b8" strokeWidth={1} strokeDasharray="5 5" name="하한선(95%)" />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-64 flex items-center justify-center text-slate-400">
-                  예측 데이터 로딩 중...
+                  데이터 로딩 중...
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* 계절성 패턴 */}
+        {/* 계절성 분석 */}
         <TabsContent value="seasonality">
           <Card className="bg-slate-800 border-slate-700">
             <CardHeader>
-              <CardTitle>계절성 패턴 (월별 계수)</CardTitle>
+              <CardTitle>계절성 패턴</CardTitle>
+              <CardDescription className="text-slate-400">
+                월별 평균 변동률
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {analysisData?.data?.seasonality?.pattern && analysisData.data.seasonality.pattern.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analysisData.data.seasonality.pattern.map((value, index) => ({
-                    month: `${index + 1}월`,
-                    coefficient: value,
+                  <BarChart data={analysisData.data.seasonality.pattern.map((factor, idx) => ({
+                    month: `${idx + 1}월`,
+                    factor: factor
                   }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                     <XAxis dataKey="month" stroke="#94a3b8" />
@@ -352,14 +395,13 @@ export default function Dashboard() {
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
                       labelStyle={{ color: '#e2e8f0' }}
-                      formatter={(value: any) => value?.toFixed(3)}
                     />
-                    <Bar dataKey="coefficient" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="factor" fill="#8b5cf6" name="계절성 지수" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-64 flex items-center justify-center text-slate-400">
-                  계절성 데이터 로딩 중...
+                  데이터 로딩 중...
                 </div>
               )}
             </CardContent>
