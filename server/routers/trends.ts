@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from '../_core/trpc';
 import { timeSeriesAnalyzer } from '../timeSeriesAnalyzer';
+import { generateInsights } from '../insightGenerator';
 import { getRecentExportImportTrends } from '../db';
 
 export const trendsRouter = router({
@@ -244,6 +245,57 @@ export const trendsRouter = router({
           success: false,
           data: null,
           error: error instanceof Error ? error.message : 'Correlation analysis failed',
+        };
+      }
+    }),
+
+  /**
+   * 핵심 인사이트 자동 생성
+   */
+  generateInsights: publicProcedure
+    .input(z.object({
+      theme: z.string().min(1),
+      industry: z.string().min(1),
+      months: z.number().min(12).max(36).default(36),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - input.months);
+
+        const analysis = await timeSeriesAnalyzer.analyzeTimeSeries(
+          input.theme,
+          input.industry,
+          startDate,
+          endDate
+        );
+
+        const insights = await generateInsights({
+          exportValue: analysis.mean * 1e9,
+          importValue: analysis.mean * 1e9 * 0.9,
+          exportGrowth: analysis.probability.growthProbability > 50 ? 5 : -3,
+          importGrowth: analysis.probability.growthProbability > 50 ? 4 : -2,
+          tradeBalance: analysis.mean * 1e9 * 0.1,
+          theme: input.theme,
+          industry: input.industry,
+          trendDirection: analysis.trend as 'increasing' | 'decreasing' | 'stable',
+          riskLevel: analysis.probability.riskLevel,
+          volatility: analysis.probability.volatility,
+          seasonalityDetected: analysis.seasonality.detected,
+          growthProbability: analysis.probability.growthProbability,
+        });
+
+        return {
+          success: true,
+          data: insights,
+        };
+      } catch (error) {
+        console.error('[trendsRouter] Error generating insights:', error);
+        return {
+          success: false,
+          data: null,
+          error: error instanceof Error ? error.message : 'Failed to generate insights',
         };
       }
     }),
