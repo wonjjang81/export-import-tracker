@@ -237,9 +237,12 @@ export default function Dashboard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="1">1개월 (빠른 분석) ⚡</SelectItem>
+                  <SelectItem value="3">3개월</SelectItem>
+                  <SelectItem value="6">6개월</SelectItem>
                   <SelectItem value="12">12개월</SelectItem>
                   <SelectItem value="24">24개월</SelectItem>
-                  <SelectItem value="36">36개월 (3년)</SelectItem>
+                  <SelectItem value="36">36개월 (3년 상세)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
