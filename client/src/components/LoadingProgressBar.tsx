@@ -136,7 +136,7 @@ export function LoadingProgressBar() {
             <button
               onClick={() => {
                 cancelLoading();
-                navigate('/');
+                setTimeout(() => navigate('/'), 100);
               }}
               className="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
             >
