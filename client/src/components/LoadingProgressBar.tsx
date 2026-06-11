@@ -1,9 +1,11 @@
 import { useLoading } from '@/contexts/LoadingContext';
-import { CheckCircle2, Circle, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Loader2, Home } from 'lucide-react';
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useLocation } from 'wouter';
 
 export function LoadingProgressBar() {
   const { isLoading, isSuspended, progress, currentStep, steps, logs, cancelLoading, restartFromBeginning, resumeLoading } = useLoading();
+  const [, navigate] = useLocation();
   const [displayProgress, setDisplayProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(() => Date.now());
@@ -130,6 +132,16 @@ export function LoadingProgressBar() {
               className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors duration-200"
             >
               처음부터 시작
+            </button>
+            <button
+              onClick={() => {
+                cancelLoading();
+                navigate('/');
+              }}
+              className="flex-1 px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              <Home className="w-4 h-4" />
+              홈으로 이동
             </button>
           </div>
         </div>
