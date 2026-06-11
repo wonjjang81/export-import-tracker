@@ -118,11 +118,13 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
 
   const cancelLoading = useCallback(() => {
     setIsLoading(false);
-    setIsCancelled(true);
-    setIsSuspended(true);
-    setSuspendedSteps(steps);
-    addLog('분석이 중지되었습니다.', 'warning');
-  }, [steps, addLog]);
+    setIsCancelled(false);
+    setIsSuspended(false);
+    setProgressState(0);
+    setSteps([]);
+    setLogs([]);
+    setSuspendedSteps([]);
+  }, []);
 
   const suspendLoading = useCallback(() => {
     setIsLoading(false);
