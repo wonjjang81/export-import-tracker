@@ -395,4 +395,80 @@ ${input.keyInsights}
         };
       }
     }),
+
+  /**
+   * 푸시 알림 구독
+   */
+  subscribe: protectedProcedure
+    .input(z.object({
+      pushSubscription: z.object({
+        endpoint: z.string(),
+        keys: z.object({
+          p256dh: z.string(),
+          auth: z.string(),
+        }),
+      }),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return { success: false, error: 'Database unavailable' };
+        }
+
+        await db
+          .insert(userSubscriptions)
+          .values({
+            userId: ctx.user.id,
+            pushNotificationEnabled: true,
+            pushSubscription: input.pushSubscription,
+            subscriptionStatus: 'active',
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              pushSubscription: input.pushSubscription,
+              subscriptionStatus: 'active',
+              pushNotificationEnabled: true,
+            },
+          });
+
+        return { success: true };
+      } catch (error) {
+        console.error('[notificationsRouter] Error in subscribe:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to subscribe',
+        };
+      }
+    }),
+
+  /**
+   * 푸시 알림 구독 취소
+   */
+  unsubscribe: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          return { success: false, error: 'Database unavailable' };
+        }
+
+        await db
+          .update(userSubscriptions)
+          .set({
+            subscriptionStatus: 'cancelled',
+            pushNotificationEnabled: false,
+            cancelledAt: new Date(),
+          })
+          .where(eq(userSubscriptions.userId, ctx.user.id));
+
+        return { success: true };
+      } catch (error) {
+        console.error('[notificationsRouter] Error in unsubscribe:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to unsubscribe',
+        };
+      }
+    }),
 });

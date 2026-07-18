@@ -62,6 +62,20 @@
 - [x] 핵심 인사이트 요약 위젯 구현
 - [x] 핵심 인사이트 자동 생성 엔진 (LLM 기반)
 - [x] 분석 기간 최적화 (기본값 1개월)
-- [ ] 웹 푸시 알림 시스템 구현
-- [ ] 분석 완료 즉시 알림 발송 로직
-- [ ] 앱 소유자 및 구독 사용자 알림 분기 처리
+- [x] 웹 푸시 알림 시스템 구현
+- [x] 분석 완료 즉시 알림 발송 로직
+- [x] 앱 소유자 및 구독 사용자 알림 분기 처리
+
+## Phase 11: Web Push 알림 시스템 완성
+- [x] web-push 라이브러리 설치 및 VAPID 키 생성
+- [x] VAPID 키 환경변수 설정 (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT)
+- [x] Web Push 헬퍼 함수 구현 (webpush.ts)
+  - [x] initializeWebPush(): VAPID 키 초기화
+  - [x] sendPushNotificationToSubscribers(): 모든 구독자에게 푸시 알림 발송
+  - [x] sendPushNotificationToUser(): 특정 사용자에게 푸시 알림 발송
+- [x] PushNotificationSubscriber 컴포넌트 대시보드 통합
+- [x] 분석 완료 시 자동 알림 발송 로직 (analysis 라우터)
+- [x] Web Push 설정 검증 테스트 (5/5 통과)
+- [x] Web Push 통합 테스트 (7/7 통과)
+- [x] Notifications 라우터 통합 테스트 (10/10 통과)
+- [x] 전체 22개 테스트 통과 확인

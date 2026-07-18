@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
 import { InsightSummaryWidget, type InsightData } from '@/components/InsightSummaryWidget';
+import { PushNotificationSubscriber } from '@/components/PushNotificationSubscriber';
 
 export default function Dashboard() {
   const [selectedTheme, setSelectedTheme] = useState('Green Energy');
@@ -189,6 +190,11 @@ export default function Dashboard() {
           </Card>
         </div>
       )}
+
+      {/* 푸시 알림 설정 */}
+      <div className="mb-8">
+        <PushNotificationSubscriber />
+      </div>
 
       {/* 필터 및 분석 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
